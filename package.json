@@ -1,0 +1,17 @@
+{
+  "name": "library",
+  "version": "1.0.0",
+  "homepage": "https://hkmccLibrary.github.io/library",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "author": "Lin-Woo Kim",
+  "license": "ISC"
+}
