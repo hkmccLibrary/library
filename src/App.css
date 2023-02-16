@@ -1,38 +1,103 @@
-.App {
-  text-align: center;
+.Toastify__toast-body > div,
+.Toastify__toast-body {
+    text-align: center !important;
+    width: 10%;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+@media screen {
+    .toPrint {
+        display: none;
+        page-break-after: always;
+    }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+h1 {
+    margin: 0;
+    color: black;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+h2 {
+    text-align: center;
+    margin: 0;
+    color: darkgray;
+    font-size: 1.5rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
 }
 
-.App-link {
-  color: #61dafb;
+h4 {
+    margin-right: 2rem;
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+video {
+    max-width: 100%;
+    height: 100%;
+    width: 100%;
+}
+
+hr {
+    color: #ffffff;
+}
+
+#nav {
+    width: max(30%, 600px);
+    font-size: 120%;
+    border-spacing: 0px;
+    padding-top: 5px;
+    border: hidden;
+    padding-left: 0px;
+    padding-right: 5px;
+    border: hidden;
+}
+
+#nav_item {
+    width: 300px;
+    font-size: 120%;
+    border: hidden;
+    font-weight: bold;
+    overflow: hidden;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    padding-left:10px;
+    padding-right:0px;
+    border: hidden;
+}
+#nav_checkOut, #nav_search  {
+    background-color:#e0e0e0;
+    width: min(100%, 300px);
+    margin-left: 0px;
+    margin-right: 0px;
+    font-size: 80%;
+    border-style: hidden;
+    border-radius: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    font-weight: bold;
+    border: hidden;
+}
+a:link a:visited a:hover a:active {
+    text-decoration: none;
+    color: black;
+}
+#nav_button:hover {
+    text-decoration: none;
+    background-color: #80a0e0;
+    color: white;
+}
+
+@media only screen and (max-width:650px) {
+    #nav {
+        margin-left: auto;
+        margin-right: auto;
+        width: 100%;
+        padding-right: 0px;
+    }
+    #nav_item {
+        width: 50%;
+    }
+    #nav_print {
+        display: none;
+    }
 }
