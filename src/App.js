@@ -22,7 +22,6 @@ function App() {
             console.log("Initialize app");
             console.log(process.env.REACT_APP_NAME);
             console.log(process.env.REACT_APP_VERSION);
-            const docState = await doc.openDoc();
 
             const lang = navigator.languages;
             console.log(lang);
@@ -41,9 +40,17 @@ function App() {
             }
             console.log(textString);
 
+            const prop = toastProp;
+            prop.type = toast.TYPE.LOADING;
+            prop.autoClose = false;
+            toast.loading(textString.loading, prop);
+
+            const docState = await doc.openDoc();
+
             console.log(docState);
             if (docState === false)
             {
+                toast.dismiss();
                 const prop = toastProp;
                 prop.autoClose = 3000;
                 toast.error(textString.failedToOpen, prop);
