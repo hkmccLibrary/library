@@ -3,8 +3,7 @@ import "./Page.css"
 import { toast } from "react-toastify";
 import Logo from "../images/logo.png";
 import { useDebounce } from "use-debounce";
-import { sleep, toastProp, SEARCH_PER_SCREEN, MAX_SEARCH_ENTRY } from "../Util";
-import text from "../api/text";
+import { sleep, SEARCH_PER_SCREEN, MAX_SEARCH_ENTRY } from "../Util";
 
 let initialized = false;
 
@@ -21,28 +20,40 @@ function Search(props) {
 
     useEffect(function () {
         async function initialize() {
-            console.log("Initialize Search");
 //            toast.dismiss();
             props.doc.setCallback(updateDoc);
             while (!props.doc.isOpen()) {
                 await sleep(0.1);
             }
 
+/*
             const rentSheet = await props.doc.sheetsByTitle('rent');
             const bookSheet = await props.doc.sheetsByTitle('book');
 
             if (!rentSheet || !bookSheet)
             {
-                toast.dismiss();
                 const prop = toastProp;
                 prop.autoClose = 3000;
                 toast.error(text.failedToOpen, prop);
                 return;
             }
+            const cachedRentData = props.doc.getCachedList("rent");
+            const cachedBookData = props.doc.getCachedList("book");
+            if (!cachedRentData.has(rentSheet.header.barcode.toString()) ||
+                !cachedBookData.has(bookSheet.header.barcode.toString()) ||
+                !cachedBookData.has(bookSheet.header.name.toString()))
+            {
+                console.log("Data should be loaded");
+                const prop = toastProp;
+                prop.type = toast.TYPE.LOADING;
+                prop.autoClose = false;
+            }
 
             props.doc.readList("rent", [rentSheet.header.barcode]);
             props.doc.readList("rent", [rentSheet.header.returnDate]);
             props.doc.readList("book", [bookSheet.header.barcode, bookSheet.header.name]);
+*/
+            console.log("Data should be loaded");
         }
         initialize();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,7 +129,7 @@ function Search(props) {
     useEffect(
         () => {
             const length = searchResults.length;
-//                console.log("Page num " + pageNum.toString);
+                console.log("Page num " + pageNum.toString);
             if (length > SEARCH_PER_SCREEN)
             {
                 const startIdx = pageNum * SEARCH_PER_SCREEN;
@@ -135,6 +146,34 @@ function Search(props) {
 
     async function updateDoc()
     {
+        console.log("All data loaded " + initialized);
+        initialized = true;
+        toast.dismiss();
+        /*
+        const prop = toastProp;
+        prop.type = toast.TYPE.SUCCESS;
+        prop.render = props.text.succeededToOpen;
+        prop.autoClose = 3000;
+        toast.info(props.text.loading, prop);
+        */
+        console.log("Done");
+        let rl = [];
+        const rented = props.doc.rent;
+        for (let i = 0 ; i < rented.length; i++)
+        {
+           rl.push({code:rented[i].book_id, retDate:rented[i].return_date, state:rented[i].state});
+        }
+        setRentList(rl);
+
+        let bl = [];
+        const books = props.doc.book
+        for (let i = 0 ; i < books.length; i++)
+        {
+           bl.push({code: books[i]._id, name: books[i].title, author: books[i].author, claim: books[i].claim,
+                    totalName: "", category: books[i].publisher, publish: books[i].publisher});
+        }
+        setBookList(bl);
+    /*
         const rentSheet = await props.doc.sheetsByTitle('rent');
         const bookSheet = await props.doc.sheetsByTitle('book');
         const cachedRentData = props.doc.getCachedList("rent");
@@ -148,10 +187,9 @@ function Search(props) {
         {
             console.log("All data loaded " + initialized);
             let rentLists;
-            rentLists = await props.doc.readList("rent", [rentSheet.header.barcode, rentSheet.header.returnDate, rentSheet.header.state]);
+            rentLists = await props.doc.readList("rent", [rentSheet.header.barcode, rentSheet.header.returnDate]);
             const rented = rentLists[0];
             const retDate = rentLists[1];
-            const state = rentLists[2];
 
             let bookLists;
             bookLists = await props.doc.readList("book", [bookSheet.header.barcode, bookSheet.header.name]);
@@ -161,7 +199,7 @@ function Search(props) {
             let rl = [];
             for (let i = 0 ; i < rented.length; i++)
             {
-               rl.push({code:rented[i], retDate:retDate[i], state:state[i]});
+               rl.push({code:rented[i], retDate:retDate[i]});
             }
             setRentList(rl);
 
@@ -178,10 +216,10 @@ function Search(props) {
             props.doc.readList("book", [bookSheet.header.claim, bookSheet.header.publish]);
 
             const prop = toastProp;
-            toast.dismiss();
             prop.type = toast.TYPE.SUCCESS;
+            prop.render = props.text.succeededToOpen;
             prop.autoClose = 3000;
-            toast.success(props.text.succeededToOpen, prop);
+            toast.update(initNoti, prop);
             console.log("Done");
         }
         if (cachedBookData.has(bookSheet.header.author.toString()) &&
@@ -209,6 +247,7 @@ function Search(props) {
             setBookList(bl);
             console.log("Set Book List " + bl.length);
         }
+*/
     }
 
     function movePrev() {
@@ -263,8 +302,8 @@ function Search(props) {
                     <td>{bookInfo.code} </td>
                 </tr>
                 <tr>
-                    <td>{bookInfo.claim} </td>
                     <td>{bookInfo.publish}</td>
+                    <td>{bookInfo.claim} </td>
                     <td>{result.retDate}</td>
                 </tr>
                 </tbody></table>
@@ -284,7 +323,6 @@ function Search(props) {
                 <input id="searchInput"
                     placeholder={props.text.searchBook}
                     value={inputText}
-                    disabled={!initialized}
                     onChange={(event) => {
                         setInputText(event.target.value);
                     }} />
