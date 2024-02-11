@@ -1,253 +1,533 @@
 import React, { useEffect, useState } from "react";
 import "./Page.css"
 import { toast } from "react-toastify";
-import Logo from "../images/logo.png";
+import { toastProp, loggingId, loadingId, getUserState } from "../Util";
 import { useDebounce } from "use-debounce";
-import { sleep, toastProp } from "../Util";
+//import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import ListView from "../ListView";
+import { useNavigate, useParams } from "react-router-dom";
 
-const selectedIds = new Set();
+const State = {
+    LoggedOut: 0,
+    LoggingIn: 1,
+    LoggedIn:  2,
+    LoggingOut: 3
+}
 
 function CheckOut(props) {
-    const [inputText, setInputText] = useState("");
-    const [studentList, setStudentList] = useState([]);
-    const [rentList, setRentList] = useState([]);
-    const [bookList, setBookList] = useState([]);
-    const [searchQuery] = useDebounce(inputText, 50);
-    const [searchResults, setSearchResults] = useState([]);
-    const [selectedId, selectIdImpl] = useState({code:-1});
-    const [initialized, setInitialized] = useState(false);
+    const [userId, setUserId] = useState("");
+
+    const [bookText, setBookText] = useState("");
+    const [bookValue] = useDebounce(bookText, 500);
+    const [bookId, setBookId] = useState("");
+
+    const [needConfirm, setNeedConfirm] = useState(false);
+
+    const [barcode, setBarcode] = useState("");
+
+    const [notifyRequest, setNotifyRequest] = useState({});
+
+    const [rented, setRented] = useState([]);
+    const [userData, setUserData] = useState({});
+    const [bookData, setBookData] = useState({});
+    const [state, setState] = useState(State.LoggedOut);
+
+    const { id } = useParams();
+
+    const navigate = useNavigate();
 
     useEffect(function () {
         async function initialize() {
-            toast.dismiss();
-            while (!props.doc.isOpen()) {
-                await sleep(0.1);
-            }
+            console.log("=======================================");
             console.log("CheckOut initialize");
-            console.log(props.text);
-
-            const userSheet = await props.doc.sheetsByTitle('user');
-            const rentSheet = await props.doc.sheetsByTitle('rent');
-            const bookSheet = await props.doc.sheetsByTitle('book');
-            if (!userSheet || !rentSheet || !bookSheet)
+            const prefixList = document.getElementsByName("idPrefix");
+            for (var i = 0 ; i < prefixList.length ; i++)
             {
-                const prop = toastProp;
-                prop.autoClose = 3000;
-                toast.error(props.text.failedToOpen, prop);
-                return;
+                const prefix = prefixList[i].id
+                if ("AB" === prefix)
+                    prefixList[i].checked = true
+                else
+                    prefixList[i].checked = false
+
             }
-            console.log(userSheet.header);
-            console.log(userSheet.header["name"]);
-            const cachedUserData = props.doc.getCachedList("user");
-            const cachedRentData = props.doc.getCachedList("rent");
-            let initNoti = null;
-            if (!cachedUserData.has(userSheet.header.code.toString()) ||
-                !cachedUserData.has(userSheet.header.name.toString()) ||
-                !cachedRentData.has(rentSheet.header.barcode.toString()) ||
-                !cachedRentData.has(rentSheet.header.user.toString()) ||
-                !cachedRentData.has(rentSheet.header.rentDate.toString()) ||
-                !cachedRentData.has(rentSheet.header.returnDate.toString()) )
+            console.log("ID: " + id);
+            if (id && id.length !== 0)
             {
-                console.log("Data should be loaded");
-                const prop = toastProp;
-                prop.autoClose = false;
-                initNoti = toast.info(props.text.loading, prop);
-                console.log(props.text.loading);
+//                setBarcode(id)
+                setUserId(id);
+                logIn(id);
             }
-
-            console.log(bookSheet.header);
-
-            console.log(userSheet.name);
-            let userLists;
-            userLists = await props.doc.readList("user", [userSheet.header.code,
-                                                          userSheet.header.name]);
-            const codeList = userLists[0];
-            const nameList = userLists[1];
-
-            let rentLists;
-            rentLists = await props.doc.readList("rent", [rentSheet.header.barcode,
-                                                          rentSheet.header.user,
-                                                          rentSheet.header.rentDate,
-                                                          rentSheet.header.returnDate]);
-            const rentedList = rentLists[0];
-            const renterList = rentLists[1];
-            const rentDates = rentLists[2];
-            const returnDates = rentLists[3];
-
-            const userList = [];
-            const rentList = [];
-            for (let i = 0 ; i < Math.min(codeList.length, nameList.length); i++)
-            {
-               userList.push({code: codeList[i],  name: nameList[i]});
-            }
-            setStudentList(userList);
-            for (let i = 0 ; i < Math.min(codeList.length, nameList.length); i++)
-            {
-               rentList.push({code: rentedList[i],  user: renterList[i], rentDate: rentDates[i], returnDate: returnDates[i]});
-            }
-            setRentList(rentList);
-
-            loadBook(bookSheet.header);
-
-            console.log("Sheet read " + userList.length);
-            if (initNoti) {
-                const prop = toastProp;
-                prop.type = toast.TYPE.SUCCESS;
-                prop.autoClose = 3000;
-                prop.render = props.text.succeededToOpen;
-                toast.update(initNoti, prop);
-            }
-            setInitialized(true);
         }
+
+        const interval = setInterval(async () => {
+//            console.log(props.doc.serverInfo);
+            if (!("localIp" in props.doc.serverInfo) || !("port" in props.doc.serverInfo))
+                return;
+            if (props.doc.admin)
+                return;
+            import("./PageServer.css");
+            const ipAddr = props.doc.serverInfo.localIp;
+            const portNum = props.doc.serverInfo.port;
+            if (ipAddr.length > 0 && portNum > 0)
+            {
+                const url = "https://" + ipAddr + ":" +
+                    portNum + "/scanBarcode";
+                const response = await props.doc.requestGet(url, {});
+                const code = response.data.scan;
+                if (code) {
+                    console.log(code)
+                    console.log(state)
+                    setBarcode(code)
+                }
+            }
+        }, 1000)
+
         initialize();
-        return () => toast.dismiss();
+        return () => clearInterval(interval);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(
         () => {
-            async function findStudents(text) {
-                let results = [];
-
-                for (const row of studentList) {
-                    if (results.length > 4) break;
-                    if ((row.code && row.code.toString().includes(text)) ||
-                        (row.name && row.name.toString().includes(text)))
-                    {
-                        let resultString = `${row.code}: ${row.name}`;
-                        let resultObject = {
-                            code: row.code,
-                            name: row.name,
-                            text: resultString,
-                        };
-                        results.push(resultObject);
-                        selectedIds.add(row.code);
-                    }
-                }
-                return results;
-            }
-            async function query() {
-                if (searchQuery) {
-                    let sr = await findStudents(searchQuery);
-                    if (sr.length > 0)
-                    {
-                        setSearchResults(sr);
-                    }
-                    else
-                    {
-                        console.log("No matching student");
-                        setSearchResults([]);
-                    }
-                } else {
-                    console.log("No matching student");
-                    setSearchResults([]);
-                }
-            }
-            query();
-        },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [searchQuery, studentList]
+            console.log("Updated id: " + id);
+        }, [id]
     );
 
-    const selectId = async (code) => {
-//        const info = await props.doc.getStudent(code);
-        console.log("Select " + selectedId.code + " " + code);
-        console.log(selectedId);
-        if (!selectedId || !selectedId.code || selectedId.code !== code)
+    useEffect(
+        () => {
+            if (!barcode)
+                return;
+            console.log("Updated barcode: " + barcode);
+            console.log("state : " + state);
+            if (state === State.LoggedIn)
+                setBookId(barcode);
+            else if (state === State.LoggedOut)
+                logIn(barcode);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [barcode]
+    );
+
+    useEffect(
+        () => {
+            console.log("User data updated ");
+            console.log(toast.isActive(loggingId));
+            const prop = toastProp;
+
+            let text;
+            let notify = false;
+            if ("USER_CODE" in userData && state !== State.LoggedIn)
+            {
+                console.log("Set state to LoggedIn from " + state);
+                setState(State.LoggedIn);
+
+                prop.type = toast.TYPE.SUCCESS;
+                text = props.text.logInSucceed;
+                notify = true;
+            }
+            else if (!("USER_CODE" in userData))
+            {
+                console.log("Set state to LoggedOut from " + state);
+
+                if (state === State.LoggingIn)
+                {
+                    prop.type = toast.TYPE.ERROR;
+                    text = props.text.logInFail;
+                    notify = true;
+                }
+                setState(State.LoggedOut);
+            }
+
+            if (notify)
+            {
+                setNotifyRequest({"id": loadingId,
+                                  "text": text,
+                                  "type": prop.type})
+            }
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [userData]
+    );
+
+    useEffect(
+        () => {
+            console.log("book updated ");
+            if ("BARCODE" in bookData)
+            {
+                if (bookData._STATE === 0)
+                {
+                    setNeedConfirm(true);
+                }
+                else
+                {
+                    setNotifyRequest({"id": loadingId,
+                                      "text": props.text.RENTED,
+                                      "type": toast.TYPE.ERROR})
+                    setNeedConfirm(false);
+                }
+            }
+            else
+            {
+                setNeedConfirm(false);
+//                setBarcode("")
+                setBookId("");
+            }
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [bookData]
+    );
+
+    useEffect(
+        () => {
+            if (! ("text" in notifyRequest))
+                return
+
+            toast.dismiss();
+            console.log("Notification " + notifyRequest.text)
+            const prop = toastProp;
+            prop.type = notifyRequest.type
+            prop.autoClose = 3000;
+//            let id = 0
+//            if ("id" in notifyRequest)
+//                id = notifyRequest.id
+
+//            prop.toastId = id
+//            if (toast.isActive(id))
+//                toast.update(id, notifyRequest.text, prop);
+//            else
+                toast.info(notifyRequest.text, prop);
+//            setNotifyRequest({})
+        },
+        [notifyRequest]
+    );
+
+/*
+    useEffect(
+        () => {
+            if (state === State.LoggedIn)
+                return;
+
+            const prefixList = document.getElementsByName("idPrefix");
+            var prefix = ""
+            for (var i = 0 ; i < prefixList.length ; i++)
+            {
+                if (prefixList[i].checked)
+                    prefix = prefixList[i].id
+                    console.log("Pressed [" + i.toString() + " " + prefix + "]")
+
+            }
+            let _userId;
+            if (userValue[0] === "A" || userValue[0] === "a")
+                _userId = userValue;
+            else
+                _userId = prefix + userValue;
+//                setBarcode(_userId);
+            setUserId(_userId);
+
+        }, [state, userValue]
+    );
+*/
+
+    const getUserData = async (userText) => {
+        const url = "https://" + props.doc.serverInfo.localIp + ":" + props.doc.serverInfo.port + "/user?user=" + userText;
+        const param = {"user": userText, "data":"nothing"};
+        const response = await props.doc.requestGet(url, param);
+        const user = response.data.return;
+
+        setUserData(user);
+        console.log(user);
+        setUserId(user.USER_CODE);
+    }
+
+    const logIn = async (inputId = undefined) => {
+        var userId;
+        var prefix = "";
+        var i;
+        const prefixList = document.getElementsByName("idPrefix");
+        if (inputId)
         {
-            console.log("Selected");
-//            console.log(info);
-            selectIdImpl({code:code});
+            if (inputId.length <= 2)
+                return;
+            prefix = inputId.substring(0, 2);
+            var found = false;
+            for (i = 0 ; i < prefixList.length ; i++)
+            {
+                if (prefix === prefixList[i].id)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                return;
+            userId = inputId;
         }
         else
         {
-            console.log("Deselect");
-            selectIdImpl({code:-1});
-        }
-    }
-
-    const showRented = (rent) => {
-        const rentDate = rent.rentDate.split(' ')[0];
-        console.log(rentDate);
-        let bookName = "";
-        for (let i = 0 ; i < bookList.length ; i++)
-        {
-            if (bookList[i].code === rent.code)
-                bookName = bookList[i].name;
-        }
-        return (<tr key = {rent.code}>
-                    <td> {bookName} </td>
-                    <td> {rentDate} </td>
-                    <td> {rent.returnDate} </td>
-                </tr>);
-    }
-
-    const loadBook = async (header) => {
-        let bookLists;
-        bookLists = await props.doc.readList("book", [header.barcode,
-                                                      header.name]);
-        const bookCodes = bookLists[0];
-        const bookNames = bookLists[1];
-
-        for (let i = 0 ; i < bookCodes.length; i++)
-        {
-           bookList.push({code: bookCodes[i], name: bookNames[i]})
-        }
-        setBookList(bookList);
-        console.log("Book loaded " + bookList.length.toString());
-    }
-
-    const showEntries = (result) => {
-        const hidden = (selectedId.code !== result.code);
-        let rented = []
-        if (!hidden)
-        {
-            for (let rent of rentList)
+            const userValue = document.getElementById('userInput').value;
+            for (i = 0 ; i < prefixList.length ; i++)
             {
-                if (rent.user === result.code)
+                if (prefixList[i].checked)
+                    prefix = prefixList[i].id
+                    console.log("Pressed [" + i.toString() + " " + prefix + "]")
+
+            }
+            if (userValue[0] === "A" || userValue[0] === "a")
+                userId = userValue;
+            else
+                userId = prefix + userValue;
+        }
+        console.log("LOGIN");
+        console.log(userId);
+        if (userId.length === 0)
+            return;
+        console.log("Set state to LoggingIn from " + state );
+        setState(State.LoggingIn);
+        const _id = userId.toUpperCase();
+        getUserData(_id);
+    }
+
+    const logOut = async () => {
+        console.log("Finish")
+        setUserData({});
+        setBookData({});
+//        setBarcode("");
+        setUserId("");
+        setBookId("");
+        setRented([])
+        navigate("/")
+    }
+
+/*
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    }
+*/
+
+    useEffect(() => {
+        async function setBookValue() {
+            if (bookValue.length <= 0)
+                return;
+            var _bookId;
+            if (props.doc.admin)
+                _bookId = bookValue;
+            else
+                _bookId = "HK" + bookValue;
+            console.log("Search book1 " + _bookId);
+            const url = "https://" + props.doc.serverInfo.localIp + ":" +
+                props.doc.serverInfo.port + "/book";
+//                const obj = {"params": {"book": btoa(toUtf8(_bookId)), "match": true}};
+            const param = {"book": _bookId, "match": true};
+            const response = await props.doc.requestGet(url, param);
+            const book = response.data.return;
+            console.log(book)
+//                        if ('BOOKNAME' in book)
+            if ('books' in book && 'BOOKNAME' in book.books)
+            {
+                console.log(book.books)
+                setBookData(book.books)
+            }
+        }
+        setBookValue()
+    }, [bookValue, props.doc]);
+
+    useEffect(() => {
+        async function setBookId() {
+            console.log("Set bookId: " + bookId);
+            if (bookId.length === 0)
+                return;
+            console.log("Search book2 " + bookId);
+            const url = "https://" + props.doc.serverInfo.localIp + ":" +
+                props.doc.serverInfo.port + "/book";
+//                const obj = {"params": {"book": btoa(toUtf8(bookId)), "match": true}};
+            const param = {"book": bookId, "match": true};
+            const response = await props.doc.requestGet(url, param);
+            const book = response.data.return;
+            console.log(book)
+            if ('books' in book && 'BOOKNAME' in book.books)
+            {
+                setBookData(book.books)
+            }
+        }
+        setBookId();
+    }, [bookId, props.doc]);
+
+    useEffect(() => {
+        async function setUserId() {
+            console.log("Set userId: " + userId);
+            if (!userId || userId.length === 0)
+                return;
+            if (userId.search("AA") === 0 || userId.search("AB") === 0 )
+            {
+                const prefixList = document.getElementsByName("idPrefix");
+                const prefix = userId.substring(0, 2);
+                for (var i = 0 ; i < prefixList.length ; i++)
                 {
-                    console.log(rent);
-                    rented.push(rent);
+                    const id = prefixList[i].id
+                    if (prefix === id)
+                        prefixList[i].checked = true
+                    else
+                        prefixList[i].checked = false
+
                 }
             }
         }
-        return (<div key={result.code}><button type="button" id="searchResult" onClick={async () => {await selectId(result.code);}}> {result.text} </button>
-                    <div hidden={hidden}>
-                        <table><tbody>
-                        <tr><th id="bookname">{props.text.bookName}</th>
-                            <th id="rentDate">{props.text.rentDate}</th>
-                            <th id="returnDate">{props.text.returnDate}</th></tr>
-                        {
-                            rented.map((rent) => {
-                                return showRented(rent);
-                            })
-                        }
-                        </tbody></table>
-                    </div>
-                </div>);
+    setUserId();
+    }, [userId]);
+
+    async function confirmAction()
+    {
+        console.log("Confirmed");
+        setNeedConfirm(false);
+        console.log(bookData);
+        const url = "https://" + props.doc.serverInfo.localIp + ":" + props.doc.serverInfo.port + "/checkOut"
+        const param = {
+            book: bookData.BARCODE,
+            user: userId
+        };
+        const response = await props.doc.requestPost(url, param);
+        const ret = response.data.return
+        console.log("Rent confirmed");
+        console.log(ret)
+
+        if (ret === "SUCCESS")
+        {
+            setNotifyRequest({"id": loadingId,
+                              "text": props.text.rentSucceed,
+                              "type": toast.TYPE.SUCCESS})
+            rented.push({"id": bookData.BARCODE, "name": bookData.BOOKNAME})
+            console.log(rented)
+            setRented(rented)
+        }
+        else
+        {
+            let text
+            if (ret in props.text)
+                text = props.text[ret];
+            else
+                text = props.text.NOT_AVAILABLE;
+            console.log(text)
+            setNotifyRequest({"id": loadingId,
+                              "text": text,
+                              "type": toast.TYPE.ERROR})
+        }
+        setBookData({});
+//        setBarcode("");
+        setBookId("");
+        getUserData(userId);
     }
 
+    function showEntry(index, rent)
+    {
+    /*
+        return (<React.Fragment key={index + "Fragment"}>
+                    <tr key={index}>
+                        <td className="bookCell"> {rent.id} </td>
+                        <td colSpan="3" className="bookCell"> {rent.name} </td>
+                    </tr>
+                </React.Fragment>
+                );
+    */
+        return (<div id="bookEntry" key={rent.id}>
+                    <div id="bookItem"> {rent.id} </div>
+                    <div id="bookItem"> {rent.name} </div>
+                </div>);
+
+    }
+
+    function showBook(books)
+    {
+        return (<div id="bookList">
+                    <div id="dueDate">
+                    {props.text.dueDate} : {props.doc.dueDate}
+                    </div>
+                    {books.map((rent, index) => { return showEntry(index, rent) })}
+                </div>);
+    }
+    /*
+                    <table><tbody>
+                        {books.map((rent, index) => { return showEntry(index, rent) })}
+                    </tbody></table>
+    */
+
+    function cancelAction()
+    {
+        console.log("Cancelled")
+        setNeedConfirm(false);
+        setBookData({});
+//        setBarcode("")
+        setBookId("");
+    }
+
+    function setUserKeyDown(event)
+    {
+        if (event.key === "Enter")
+        {
+            console.log(event);
+            console.log(document.getElementById('userInput').value);
+            logIn();
+        }
+    }
+
+//            <div id="checkOutResult" hidden={state !== State.LoggedIn ? true : false }>
+//            <div id="checkOutResult" hidden={true}>
     return (
         <div id="checkOut">
             <div id="title">
-                <img id="logo" src={Logo} alt="HKMCC" ></img>
-                <h1>{props.text.checkOutTitle}</h1>
+                <h2>
+                    {props.text.checkOut}
+                </h2>
             </div>
-            <div id="checkOutInput" >
-                <input id="searchInput"
-                    placeholder={props.text.searchUser}
-                    value={inputText}
-                    disabled={!initialized}
-                    onChange={(event) => {
-                        setInputText(event.target.value);
-                    }} />
-
-                {
-                    searchResults.map((result) => {
-                        return showEntries(result);
-                    })
+            <div id="checkOutInput" hidden={state === State.LoggedIn}>
+                <input type="radio" id = "AA" name="idPrefix"/>
+                <label htmlFor="AA" className="idPrefix" name="idPrefix"> AA </label>
+                <input type="radio" id = "AB" name="idPrefix"/>
+                <label htmlFor="AB" className="idPrefix" name="idPrefix"> AB </label>
+                <input type="text" id="userInput" pattern="[0-9]*" inputMode="numeric"
+                    placeholder={props.text.idHolder}
+                    onKeyDown={(event) => {
+                        setUserKeyDown(event);
+                    }}/>
+               <button id="logIn" onClick={async () => logIn()}> {props.text.logIn} </button>
+            </div>
+            <div id="checkOutResult" hidden={state !== State.LoggedIn}>
+                {userData.USER_CODE && (
+                    <div id="userInfo">
+                        <div id="userItem">
+                            {userData.USER_CODE + " : " + userData.USER_NAME + props.text.nameSuffix}
+                        </div>
+                        <div id="userItem"> {getUserState(props.text, userData.USER_STATE)} </div>
+                        <div id="userItem"> {userData._RENT.length + " " + props.text.rentSuffix} </div>
+                    </div>
+                )}
+                <div id="bookInput" hidden={needConfirm}>
+                    <label id="manualInput">
+                        <div id="hkPrefix">
+                        {props.text.numberOnly}
+                        </div>
+                        <input inputMode="numeric" pattern="[0-9]*" type="text" id="bookInput"
+                            placeholder={props.text.bookHolder}
+                            onInput={(event) => {
+                                setBookText(event.target.value);
+                            }} />
+                    </label>
+                </div>
+                <div id="checkRent" hidden={!needConfirm}>
+                    <div id="bookName"> {props.text.confirmRent} </div>
+                    <div id="bookName"> {bookData.AUTHOR + ":"} </div>
+                    <div id="bookName"> {bookData.BOOKNAME} </div>
+                    <button id="confirm" onClick={async () => confirmAction()}> {props.text.confirm} </button>
+                    <button id="cancel" onClick={() => cancelAction()}> {props.text.cancel} </button>
+                </div>
+                {rented.length > 0 &&
+                    <ListView list={rented} showCallback={(entry) => {return showBook(entry)}}/>
                 }
             </div>
+            <button id="logOutButton" onClick={() => logOut()}> {props.text.finish} </button>
         </div>
     );
 }

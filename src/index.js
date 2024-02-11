@@ -29,6 +29,7 @@ async function getValidAccessToken() {
         // 30 minutes. To guarantee that the token is valid, we refresh the user's access token.
         await app.currentUser.refreshAccessToken();
     }
+//    console.log("AccessToken: [" + app.currentUser.accessToken + "]");
 
     return app.currentUser.accessToken;
 }
