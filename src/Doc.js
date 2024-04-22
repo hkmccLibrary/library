@@ -170,9 +170,17 @@ class Doc {
 //           console.log(userId);
 //           console.log(userId.length);
             if (userId && userId.length > 0 && userId in this.user)
-                this.user[userId]["rent"] += 1;
+            {
+                if (!"rent" in this.user[userId])
+                    this.user[userId]["rent"] = 1;
+                else
+                    this.user[userId]["rent"] += 1;
+            }
             else
-                this.user[userId]["rent"] = 1;
+            {
+                console.log("Invalid user")
+                console.log(this.rent[i])
+            }
         }
         console.log(this.user);
     }
