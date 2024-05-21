@@ -44,6 +44,7 @@ class Doc {
     {
         return;
 //        const response = await axios.get("https://ipv4.seeip.org/jsonip");
+/*
         const response = await axios.get("https://api.ipify.org/?format=json")
         console.log("Get IP Address");
         console.log(response.data);
@@ -51,11 +52,13 @@ class Doc {
         console.log("IP addr updated " + ipAddr)
         this.ipAddr = ipAddr;
         this.checkServerIp()
+*/
     }
 
     checkServerIp()
     {
         return;
+/*
         if (this.ipAddr.length === 0 || !this.serverInfo.globalIp)
             return;
         if (this.serverInfo.globalIp === this.ipAddr)
@@ -76,6 +79,7 @@ class Doc {
                   window.open(query);
                 });
         }
+*/
     }
 
 
@@ -171,10 +175,10 @@ class Doc {
 //           console.log(userId.length);
             if (userId && userId.length > 0 && userId in this.user)
             {
-                if (!"rent" in this.user[userId])
-                    this.user[userId]["rent"] = 1;
-                else
+                if ("rent" in this.user[userId])
                     this.user[userId]["rent"] += 1;
+                else
+                    this.user[userId]["rent"] = 1;
             }
             else
             {
@@ -182,7 +186,7 @@ class Doc {
                 console.log(this.rent[i])
             }
         }
-        console.log(this.user);
+//        console.log(this.user);
     }
 
     logIn(userInfo) {
@@ -219,7 +223,17 @@ class Doc {
                 for (const entry of result.data.return.books)
                 {
                     console.log(entry);
-                    const book = {'id': entry.BARCODE, 'title': entry.BOOKNAME, 'claim': entry.CLAIM, 'rentDate': entry.LENT_DATE, 'retDate': entry.RETURN_DATE, 'stat': entry.STATS, 'extendCount': entry._EXTEND_COUNT}
+                    const book = {
+                        'id': entry.BARCODE,
+                        'title': entry.BOOKNAME,
+                        'claim': entry.CLAIM,
+                        'claim_num': entry.CLAMENUM,
+                        'totalName': entry.TOTAL_NAME,
+                        'rentDate': entry.LENT_DATE,
+                        'retDate': entry.RETURN_DATE,
+                        'stat': entry.STATS,
+                        'extendCount': entry._EXTEND_COUNT
+                    };
                     ret.push(book);
                 }
 //                ret = result.data.return.books;
@@ -241,10 +255,12 @@ class Doc {
     //            console.log(entry);
                 const id = entry["book_id"];
                 const book = this.book[id];
-    //            console.log(book)
+//                console.log(book)
                 let retEntry = {}
                 retEntry["id"] = book._id
                 retEntry["title"] = book.title
+                retEntry['claim_num'] = book.claim_num
+                retEntry['totalName'] = book.series
                 retEntry["rentDate"] = entry.rent_date.split(" ")[0].replace("-","/",2).replace("-", "/")
                 retEntry["retDate"] = entry.return_date.split(" ")[0].replace("-","/",2).replace("-", "/")
                 retEntry["claim"] = book.claim

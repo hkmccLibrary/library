@@ -409,20 +409,21 @@ function Search(props) {
     {
         let results = [];
         console.log(advancedSearch);
+        const text = keyword.toLowerCase();
+        console.log(text);
         for (let i = 0 ; i < bookList.length ; i++) {
             const row = bookList[i];
             if (results.length >= MAX_SEARCH_ENTRY) break;
 
-            const text = keyword.toLowerCase();
             if (text.length > 0 &&
                 (!row.name || !row.name.toString().toLowerCase().includes(text)) &&
                 (!row.totalName || !row.totalName.toString().toLowerCase().includes(text)) &&
                 (!row.author || !row.author.toString().toLowerCase().includes(text)) &&
-                row.code !== text && row.isbn !== text)
+                row.code.toLowerCase() !== text && row.isbn !== text)
                 continue
             if (row.deleted && row.deleted === "Y")
                 continue
-            console.log(row)
+//            console.log(row)
 
             if (advancedSearch)
             {
